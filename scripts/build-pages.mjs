@@ -57,6 +57,7 @@ await write('app/folio/page.tsx', `import PublicPage from '../../components/Publ
 const storyPage = `import PublicPage, {articles} from '../../../../components/PublicPage';
 export const dynamicParams = false;
 export function generateStaticParams() { return articles.map(({id}) => ({id})); }
+export async function generateMetadata({params}: {params: Promise<{id: string}>}) { const {id} = await params; const article = articles.find(item => item.id === id); return article ? {title: article.title + ' | ஷபா நியூஸ் தமிழ்', description: article.summary} : {}; }
 export default async function Page({params}: {params: Promise<{id: string}>}) { return <PublicPage id={(await params).id} />; }
 `;
 await write('app/folio/story/[id]/page.tsx', storyPage);
@@ -68,3 +69,4 @@ const result = spawnSync(process.execPath, [join(root, 'node_modules/next/dist/b
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status || 1);
 await write('out/.nojekyll', '');
+
