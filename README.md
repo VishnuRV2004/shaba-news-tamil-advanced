@@ -2,9 +2,9 @@
 
 Folio is the photographic magazine edition of Shaba News Tamil. It features a three-dimensional cover turn, a photo cursor for mouse readers, and shared-photo transitions when opening a story or returning to the cover. Open `/folio` or the site root to read. Readers can share permanent story links without signing in.
 
-[Open the live Folio](https://vishnurv2004.github.io/shaba-news-tamil-advanced/)
+[Open the live Folio](https://shaba-news-tamil-folio.ideastonetech.chatgpt.site/)
 
-The public edition is a static GitHub Pages site. Pushing to `main` rebuilds it from the archived stories through `npm run build:pages`. It does not need a running server. The editorial desk and SQLite publishing workflow below still require the standalone Next.js server; changes made there do not appear on GitHub Pages until they are included in the repository and rebuilt.
+The public edition is a static site built from the archived stories with `npm run build:static` and published at the link above. Visitors do not need a running server. The editorial desk and SQLite publishing workflow below still require the standalone Next.js server; changes made there do not appear on the live static site until rebuilt and republished.
 
 ## Run locally
 

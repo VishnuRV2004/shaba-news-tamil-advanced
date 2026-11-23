@@ -10,6 +10,7 @@ type Section = Edition['sections'][number];
 type FolioProps = {edition: Edition; articles: Article[]; articleId?: string; originalView?: boolean};
 const dateFormat = new Intl.DateTimeFormat('ta-IN', {day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'});
 const siteBase = process.env.NEXT_PUBLIC_SITE_BASE || '';
+const staticSite = process.env.NEXT_PUBLIC_STATIC_SITE === '1';
 
 function formatDate(date: string) {
   const value = new Date(date);
@@ -22,7 +23,7 @@ function subscribeLocation(notify: () => void) {
 }
 
 function storyHref(id: string, preview: string) {
-  return `${siteBase}/folio/story/${encodeURIComponent(id)}${siteBase ? '/' : ''}${preview}`;
+  return `${siteBase}/folio/story/${encodeURIComponent(id)}${staticSite ? '/' : ''}${preview}`;
 }
 
 function Wordmark() {
@@ -168,10 +169,10 @@ function Collection({section, articles, preview}: {section: Section; articles: A
 function Story({article, preview, originalView}: {article: Article; preview: string; originalView: boolean}) {
   const original = originals[article.id as keyof typeof originals];
   const sourceHref = original?.sourceUrl === article.sourceUrl
-    ? `${storyHref(article.id, '')}${siteBase ? 'original/' : '/original'}${preview}`
+    ? `${storyHref(article.id, '')}${staticSite ? 'original/' : '/original'}${preview}`
     : article.sourceUrl;
   const localSource = sourceHref.startsWith('/');
-  return <article className="fo-story"><a className="fo-back" href={originalView ? storyHref(article.id, preview) : `${siteBase}/folio${siteBase ? '/' : ''}${preview}`}><ArrowLeft size={16} /> {originalView ? 'செய்திச் சுருக்கத்திற்குத் திரும்ப' : 'முதற்பக்கத்திற்குத் திரும்ப'}</a>
+  return <article className="fo-story"><a className="fo-back" href={originalView ? storyHref(article.id, preview) : `${siteBase}/folio${staticSite ? '/' : ''}${preview}`}><ArrowLeft size={16} /> {originalView ? 'செய்திச் சுருக்கத்திற்குத் திரும்ப' : 'முதற்பக்கத்திற்குத் திரும்ப'}</a>
     <div className="fo-story-intro"><Info article={article} /><h1>{article.title}</h1>{article.summary && <p>{article.summary}</p>}
       <div className="fo-story-meta">{article.author && <span>{article.author}</span>}<time dateTime={article.date}>{formatDate(article.date)}</time></div>
     </div>
@@ -198,7 +199,7 @@ export default function Folio({edition, articles, articleId, originalView = fals
   const issueDate = editionArticles.map(article => article.date).filter(Boolean).sort().at(-1);
   const search = query.trim().toLocaleLowerCase('ta-IN');
   const results = editionArticles.filter(article => [article.title, article.summary, article.district, article.category, article.author].some(field => field.toLocaleLowerCase('ta-IN').includes(search)));
-  const home = `${siteBase}/folio${siteBase ? '/' : ''}${preview}`;
+  const home = `${siteBase}/folio${staticSite ? '/' : ''}${preview}`;
   function openPanel(next: typeof panel, button: HTMLButtonElement) {
     opener.current = button;
     setPanel(next);

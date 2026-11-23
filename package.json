@@ -9,6 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "build:pages": "node scripts/build-pages.mjs",
+    "build:static": "node scripts/build-pages.mjs --root",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node --test test/publication.test.mjs"

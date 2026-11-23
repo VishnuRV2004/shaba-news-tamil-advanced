@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const site = resolve(root, '.pages-build');
-const base = '/shaba-news-tamil-advanced';
+const base = process.argv.includes('--root') ? '' : '/shaba-news-tamil-advanced';
 if (!site.startsWith(root + sep)) throw Error('Static build path escaped the repository');
 await rm(site, {recursive: true, force: true});
 
@@ -31,7 +31,7 @@ for (const path of [
 
 const globalCss = await readFile(join(root, 'app/globals.css'), 'utf8');
 await write('app/globals.css', globalCss.replaceAll('url("/fonts/', `url("${base}/fonts/`));
-await write('next.config.ts', `import type {NextConfig} from 'next';\nconst config: NextConfig = {output: 'export', basePath: '${base}', trailingSlash: true};\nexport default config;\n`);
+await write('next.config.ts', `import type {NextConfig} from 'next';\nconst config: NextConfig = {output: 'export', ${base ? `basePath: '${base}', ` : ''}trailingSlash: true};\nexport default config;\n`);
 await write('app/layout.tsx', `import './globals.css';\nexport default function Layout({children}: {children: React.ReactNode}) { return <html lang="ta"><body>{children}</body></html>; }\n`);
 await write('components/PublicPage.tsx', `import {notFound} from 'next/navigation';
 import Folio from './Folio';
@@ -63,7 +63,7 @@ await write('app/folio/story/[id]/page.tsx', storyPage);
 await write('app/folio/story/[id]/original/page.tsx', storyPage.replace("../../../../components/PublicPage", "../../../../../components/PublicPage").replace('id={(await params).id}', 'id={(await params).id} original'));
 
 const result = spawnSync(process.execPath, [join(root, 'node_modules/next/dist/bin/next'), 'build'], {
-  cwd: site, env: {...process.env, NEXT_PUBLIC_SITE_BASE: base}, stdio: 'inherit', shell: false,
+  cwd: site, env: {...process.env, NEXT_PUBLIC_SITE_BASE: base, NEXT_PUBLIC_STATIC_SITE: '1'}, stdio: 'inherit', shell: false,
 });
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status || 1);
