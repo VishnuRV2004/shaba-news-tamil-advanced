@@ -3,11 +3,13 @@
 import {useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent} from 'react';
 import {ArrowLeft, ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, Feather, MapPin, Menu, Search, X} from 'lucide-react';
 import type {Article, Edition} from '@/lib/model';
+import originals from '@/lib/originals.json';
 import './folio.css';
 
 type Section = Edition['sections'][number];
-type FolioProps = {edition: Edition; articles: Article[]; articleId?: string};
+type FolioProps = {edition: Edition; articles: Article[]; articleId?: string; originalView?: boolean};
 const dateFormat = new Intl.DateTimeFormat('ta-IN', {day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'});
+const siteBase = process.env.NEXT_PUBLIC_SITE_BASE || '';
 
 function formatDate(date: string) {
   const value = new Date(date);
@@ -20,7 +22,7 @@ function subscribeLocation(notify: () => void) {
 }
 
 function storyHref(id: string, preview: string) {
-  return `/folio/story/${encodeURIComponent(id)}${preview}`;
+  return `${siteBase}/folio/story/${encodeURIComponent(id)}${siteBase ? '/' : ''}${preview}`;
 }
 
 function Wordmark() {
@@ -31,7 +33,7 @@ function Photo({article, priority = false}: {article: Article; priority?: boolea
   const [failed, setFailed] = useState('');
   return article.image && failed !== article.image
     // eslint-disable-next-line @next/next/no-img-element -- The editor accepts local WebP assets and arbitrary publisher image URLs.
-    ? <img src={article.image} alt="" loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} onError={() => setFailed(article.image)} />
+    ? <img src={article.image.startsWith('/') ? siteBase + article.image : article.image} alt="" loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} onError={() => setFailed(article.image)} />
     : <span className="fo-photo-fallback" aria-hidden="true"><Feather size={48} strokeWidth={0.8} /></span>;
 }
 
@@ -163,19 +165,24 @@ function Collection({section, articles, preview}: {section: Section; articles: A
   </section>;
 }
 
-function Story({article, preview}: {article: Article; preview: string}) {
-  return <article className="fo-story"><a className="fo-back" href={`/folio${preview}`}><ArrowLeft size={16} /> முதற்பக்கத்திற்குத் திரும்ப</a>
+function Story({article, preview, originalView}: {article: Article; preview: string; originalView: boolean}) {
+  const original = originals[article.id as keyof typeof originals];
+  const sourceHref = original?.sourceUrl === article.sourceUrl
+    ? `${storyHref(article.id, '')}${siteBase ? 'original/' : '/original'}${preview}`
+    : article.sourceUrl;
+  const localSource = sourceHref.startsWith('/');
+  return <article className="fo-story"><a className="fo-back" href={originalView ? storyHref(article.id, preview) : `${siteBase}/folio${siteBase ? '/' : ''}${preview}`}><ArrowLeft size={16} /> {originalView ? 'செய்திச் சுருக்கத்திற்குத் திரும்ப' : 'முதற்பக்கத்திற்குத் திரும்ப'}</a>
     <div className="fo-story-intro"><Info article={article} /><h1>{article.title}</h1>{article.summary && <p>{article.summary}</p>}
       <div className="fo-story-meta">{article.author && <span>{article.author}</span>}<time dateTime={article.date}>{formatDate(article.date)}</time></div>
     </div>
     {article.image && <figure className="fo-story-photo" data-fo-photo={article.id}><Photo article={article} priority /></figure>}
     <div className="fo-story-body">{article.body.split(/\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
-      {/^https?:\/\//i.test(article.sourceUrl) && <a className="fo-source" href={article.sourceUrl} target="_blank" rel="noreferrer">மூலச் செய்தி <ArrowUpRight size={16} /></a>}
+      {!originalView && /^(https?:\/\/|\/)/i.test(sourceHref) && <a className="fo-source" href={sourceHref} target={localSource ? undefined : '_blank'} rel={localSource ? undefined : 'noreferrer'}>மூலச் செய்தி <ArrowUpRight size={16} /></a>}
     </div>
   </article>;
 }
 
-export default function Folio({edition, articles, articleId}: FolioProps) {
+export default function Folio({edition, articles, articleId, originalView = false}: FolioProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const firstInput = useRef<HTMLInputElement>(null);
   const opener = useRef<HTMLButtonElement | null>(null);
@@ -191,7 +198,7 @@ export default function Folio({edition, articles, articleId}: FolioProps) {
   const issueDate = editionArticles.map(article => article.date).filter(Boolean).sort().at(-1);
   const search = query.trim().toLocaleLowerCase('ta-IN');
   const results = editionArticles.filter(article => [article.title, article.summary, article.district, article.category, article.author].some(field => field.toLocaleLowerCase('ta-IN').includes(search)));
-  const home = `/folio${preview}`;
+  const home = `${siteBase}/folio${siteBase ? '/' : ''}${preview}`;
   function openPanel(next: typeof panel, button: HTMLButtonElement) {
     opener.current = button;
     setPanel(next);
@@ -210,7 +217,7 @@ export default function Folio({edition, articles, articleId}: FolioProps) {
       <div className="fo-tools"><button type="button" className="fo-search-btn" aria-label="செய்திகளைத் தேடுக" onClick={e => openPanel('search', e.currentTarget)}><Search size={18} /><span>தேடுக</span></button><button type="button" className="fo-menu-btn" aria-label="அனைத்துப் பிரிவுகளும்" onClick={e => openPanel('menu', e.currentTarget)}><Menu size={21} /></button></div>
     </div></header>
     <main id="fo-main" className="fo-wrap fo-main" tabIndex={-1}>
-      {articleId ? story ? <><Story article={story} preview={preview} />
+      {articleId ? story ? <><Story article={story} preview={preview} originalView={originalView} />
         {related.length > 0 && <section className="fo-collection fo-related" aria-labelledby="fo-related-heading">
           <div className="fo-section-heading"><h2 id="fo-related-heading">தொடர்புடைய செய்திகள்</h2><span aria-hidden="true" /></div>
           <div className="fo-cards">{related.map(item => <StoryCard key={item.id} article={item} preview={preview} />)}</div>

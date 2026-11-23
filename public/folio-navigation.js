@@ -1,4 +1,5 @@
 (() => {
+  const base = new URL(document.currentScript.src).pathname.replace(/\/folio-navigation\.js$/, '');
   const motion = matchMedia('(prefers-reduced-motion: no-preference)');
   const native = 'onpagereveal' in window && 'onpageswap' in window && 'CSSViewTransitionRule' in window;
   const storageKey = 'shaba-folio-photo-navigation';
@@ -7,7 +8,7 @@
   function route(value) {
     if (!value) return null;
     const url = new URL(value, location.href);
-    const match = /^\/folio(?:\/story\/([a-z0-9-]+))?\/?$/.exec(url.pathname);
+    const match = url.pathname.startsWith(base + '/') && /^\/folio(?:\/story\/([a-z0-9-]+)(?:\/original)?)?\/?$/.exec(url.pathname.slice(base.length));
     return url.origin === location.origin && match ? {id: match[1], path: url.pathname + url.search, hash: url.hash} : null;
   }
 

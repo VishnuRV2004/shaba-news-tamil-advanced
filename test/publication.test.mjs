@@ -44,6 +44,11 @@ test('only published stories and their photos are readable without editor sign-i
   const { state, revision } = await (await request('/api/studio', { headers: auth })).json();
   const leadId = state.editions.folio.sections[0].articleIds[0];
   const article = state.articles.find(story => story.id === leadId);
+  const storyPath = '/folio/story/' + leadId;
+  const storyHtml = await (await request(storyPath)).text();
+  assert.match(storyHtml, new RegExp(`href="${storyPath}/original"[^>]*>மூலச் செய்தி`));
+  const originalHtml = await (await request(storyPath + '/original')).text();
+  assert.match(originalHtml, /திருமணிமுத்தாற்றின் பெருமைகளை மீட்டெடுக்கவும்/);
   const originalTitle = article.title;
   article.title = 'புதிய செய்தி ' + originalTitle;
   article.image = url;
@@ -55,7 +60,7 @@ test('only published stories and their photos are readable without editor sign-i
   assert.equal((await put('save', revision)).status, 200);
   assert.equal((await put('save', revision)).status, 409);
   assert.equal((await request(url)).status, 404);
-  const path = '/folio/story/' + leadId;
+  const path = storyPath;
   assert.equal((await (await request(path)).text()).includes(article.title), false);
   assert.equal((await (await request(path + '?preview=draft', { headers: auth })).text()).includes(article.title), true);
   assert.equal((await put('publish', revision + 1)).status, 200);

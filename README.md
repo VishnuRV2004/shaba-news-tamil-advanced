@@ -2,7 +2,9 @@
 
 Folio is the photographic magazine edition of Shaba News Tamil. It features a three-dimensional cover turn, a photo cursor for mouse readers, and shared-photo transitions when opening a story or returning to the cover. Open `/folio` or the site root to read. Readers can share permanent story links without signing in.
 
-[Open the public Folio preview](https://shaba-tamil-editions.ideastonetech.chatgpt.site/folio)
+[Open the live Folio](https://vishnurv2004.github.io/shaba-news-tamil-advanced/)
+
+The public edition is a static GitHub Pages site. Pushing to `main` rebuilds it from the archived stories through `npm run build:pages`. It does not need a running server. The editorial desk and SQLite publishing workflow below still require the standalone Next.js server; changes made there do not appear on GitHub Pages until they are included in the repository and rebuilt.
 
 ## Run locally
 
@@ -38,4 +40,6 @@ npm start
 
 This is a standalone Next.js server. Run one instance with persistent, writable storage. SQLite stores drafts and published snapshots in `.data/studio.sqlite`; uploaded images are stored under `.data/media/`. Set `SHABA_DATA_DIR` to change that directory. Keep it private, back it up with the app stopped, and mount it across deploys. The automated publishing test uses its own temporary directory.
 
-The archive reporting, photographs and Shaba brand belong to their original publisher. Each seed article links to its original report. The Noto Tamil fonts include the SIL Open Font License in `public/fonts/`.
+The archive reporting, photographs and Shaba brand belong to their original publisher. Each seed article records its original report URL. The Noto Tamil fonts include the SIL Open Font License in `public/fonts/`.
+
+For the archived Shaba stories, **மூலச் செய்தி** opens a full-text Folio view on this site. The source URLs remain in the editorial data for attribution. To refresh the saved article text from the old Shaba pages, run `node scripts/scrape_sources.mjs` and review the updated `lib/originals.json` before publishing. No live scrape runs when a reader opens a story.
