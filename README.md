@@ -1,6 +1,6 @@
 # Shaba News Tamil
 
-Shaba News Tamil is a responsive news reader for the publisher's archived stories. It includes category and district filters, search, saved stories on the current device, sharing, and photo transitions between the homepage and article pages. Open `/folio` or the site root to read. The reader does not use 3D effects.
+Shaba News Tamil uses the Folio magazine layout, animated cover turns, photo cursor, and shared-photo transitions between articles and the homepage. Article controls include saved stories on the current device, sharing, three text sizes, and printing. Open `/folio` or the site root to read.
 
 [Open the live website](https://shaba-news-tamil-folio.ideastonetech.chatgpt.site/)
 

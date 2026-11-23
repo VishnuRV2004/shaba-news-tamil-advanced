@@ -8,7 +8,7 @@
   function route(value) {
     if (!value) return null;
     const url = new URL(value, location.href);
-    const match = url.pathname.startsWith(base + '/') && /^\/folio(?:\/story\/([a-z0-9-]+)(?:\/original)?)?\/?$/.exec(url.pathname.slice(base.length));
+    const match = url.pathname.startsWith(base + '/') && /^\/(?:folio(?:\/story\/([a-z0-9-]+)(?:\/original)?)?)?\/?$/.exec(url.pathname.slice(base.length));
     return url.origin === location.origin && match ? {id: match[1], path: url.pathname + url.search, hash: url.hash} : null;
   }
 
