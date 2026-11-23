@@ -12,6 +12,7 @@
     "build:static": "node scripts/build-pages.mjs --root",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
+    "test:static": "node --test test/static-reader.test.mjs",
     "test": "node --test test/publication.test.mjs"
   },
   "dependencies": {

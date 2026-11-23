@@ -30,7 +30,7 @@ export default function FolioCursor() {
 
     const paint = (target: Element | null, softExit = false) => {
       const photo = target?.closest<HTMLElement>('.fo-root [data-folio-cursor="read"]');
-      if (!point || !photo?.closest('a[href]')) {
+      if (!point || !photo?.closest('a[href]') || photo.closest('[data-motion="off"]')) {
         hide(softExit);
         return;
       }

@@ -4,6 +4,10 @@
   const native = 'onpagereveal' in window && 'onpageswap' in window && 'CSSViewTransitionRule' in window;
   const storageKey = 'shaba-folio-photo-navigation';
   let clicked = null;
+  function enabled() {
+    if (!motion.matches || document.querySelector('.fo-root[data-motion="off"]')) return false;
+    try { return localStorage.getItem('shaba-motion') !== 'off'; } catch { return true; }
+  }
 
   function route(value) {
     if (!value) return null;
@@ -37,7 +41,7 @@
   }
 
   document.addEventListener('click', event => {
-    if (!motion.matches || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+    if (!enabled() || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
     const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
     if (!link || (link.target && link.target !== '_self') || link.hasAttribute('download')) return;
     const from = route(location.href), to = route(link.href);
@@ -52,7 +56,8 @@
   }, true);
 
   function applyName(transition, from, to, entering) {
-    if (!transition || !motion.matches) return;
+    if (!transition) return;
+    if (!enabled()) { transition.skipTransition(); return; }
     const element = target(from, to, entering);
     if (!element) return;
     // The snapshot name must be available before hydration without changing React's server markup.
@@ -81,7 +86,7 @@
   }
 
   window.addEventListener('pageshow', () => {
-    if (!motion.matches || !Element.prototype.animate) return;
+    if (!enabled() || !Element.prototype.animate) return;
     let saved;
     try { saved = JSON.parse(sessionStorage.getItem(storageKey)); sessionStorage.removeItem(storageKey); } catch { return; }
     const to = route(location.href);

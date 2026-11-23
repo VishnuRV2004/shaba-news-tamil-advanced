@@ -8,6 +8,9 @@
 :root:has(.fo-root)::view-transition-group(root) {
   animation-duration: 640ms;
 }
+html:has(.fo-root[data-motion="off"])::view-transition-group(*),
+html:has(.fo-root[data-motion="off"])::view-transition-old(*),
+html:has(.fo-root[data-motion="off"])::view-transition-new(*) { animation: none !important; }
 :root:has(.fo-root)::view-transition-old(root) {
   animation: fo-leaf-away 460ms cubic-bezier(.35,0,.55,1) both;
   transform-origin: 15% center;
@@ -17,7 +20,7 @@
   transform-origin: 90% center;
 }
 :root:has(.fo-story) { --fo-leaf-direction: 1; }
-:root:has(.fo-issue) { --fo-leaf-direction: -1; }
+:root:has(.fo-front) { --fo-leaf-direction: -1; }
 :root:has(.fo-root)::view-transition-group(folio-photo) {
   z-index: 2;
   animation-duration: 650ms;

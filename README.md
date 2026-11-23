@@ -1,10 +1,10 @@
 # Shaba News Tamil
 
-Shaba News Tamil uses the Folio magazine layout, animated cover turns, photo cursor, and shared-photo transitions between articles and the homepage. Article controls include saved stories on the current device, sharing, three text sizes, and printing. Open `/folio` or the site root to read.
+The advanced Shaba News Tamil reader follows the normal edition's red masthead, headline strip, district filters, and four news sections. It adds a layered 3D front-page carousel, card tilt, angled feature images, section reveals, and shared-photo page transitions. Dark mode and a motion toggle are available in the header. Article controls include saved stories, sharing, three text sizes, a reading progress bar, and printing. Preferences are stored on the current device. Open `/folio` or the site root to read.
 
 [Open the live website](https://shaba-news-tamil-folio.ideastonetech.chatgpt.site/)
 
-The public edition is a static site built from the archived stories with `npm run build:static` and published at the link above. Visitors do not need a running server. The editorial desk and SQLite publishing workflow below still require the standalone Next.js server; changes made there do not appear on the live static site until rebuilt and republished.
+The public edition is a static site built from the archived stories with `npm run build:static` and published at the link above. Run `npm run test:static` after building to check every article, source route, and referenced asset. Visitors do not need a running server. The editorial desk and SQLite publishing workflow below still require the standalone Next.js server; changes made there do not appear on the live static site until rebuilt and republished.
 
 ## Run locally
 
