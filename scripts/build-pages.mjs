@@ -26,6 +26,7 @@ for (const path of [
   'package.json', 'tsconfig.json', 'public',
   'components/Folio.tsx', 'components/FolioCursor.tsx',
   'components/folio.css', 'components/folio-navigation.css', 'components/folio-cursor.css',
+  'components/signature.css',
   'lib/model.ts', 'lib/seed.ts', 'lib/archive.json', 'lib/originals.json',
 ]) await copy(path);
 

@@ -1,10 +1,11 @@
 'use client';
 
 import {useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent} from 'react';
-import {ArrowLeft, ArrowRight, ArrowUpRight, Bookmark, CalendarDays, Check, ChevronLeft, ChevronRight, Globe2, House, MapPin, Menu, Moon, Newspaper, Pause, Play, Printer, Search, Share2, Sun, Type, X} from 'lucide-react';
+import {ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Bookmark, CalendarDays, Check, ChevronLeft, ChevronRight, Globe2, House, MapPin, Menu, Moon, Newspaper, Pause, Play, Printer, Search, Share2, Sun, Type, X} from 'lucide-react';
 import type {Article, Edition} from '@/lib/model';
 import originals from '@/lib/originals.json';
 import './folio.css';
+import './signature.css';
 
 type Section = Edition['sections'][number];
 type FolioProps = {edition: Edition; articles: Article[]; articleId?: string; originalView?: boolean};
@@ -45,6 +46,51 @@ function resetTilt(event: PointerEvent<HTMLElement>) {
   event.currentTarget.style.removeProperty('--tilt-x');
   event.currentTarget.style.removeProperty('--tilt-y');
 }
+function CinematicIntro({articles, preview, motion}: {articles: Article[]; preview: string; motion: boolean}) {
+  const runway = useRef<HTMLElement>(null);
+  const [active, setActive] = useState(0);
+  const story = articles[active % articles.length];
+  useEffect(() => {
+    const node = runway.current;
+    if (!node) return;
+    const media = matchMedia('(prefers-reduced-motion:no-preference) and (min-width:761px)');
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const bounds = node.getBoundingClientRect();
+      if (bounds.bottom < 0 || bounds.top > innerHeight) return;
+      const progress = motion && media.matches ? Math.max(0, Math.min(1, -bounds.top / Math.max(1, bounds.height - innerHeight))) : 0;
+      node.style.setProperty('--cinema-scroll', String(progress));
+    };
+    const queue = () => {if (!frame) frame = requestAnimationFrame(update);};
+    update();
+    window.addEventListener('scroll', queue, {passive:true});
+    window.addEventListener('resize', queue);
+    media.addEventListener('change', queue);
+    return () => {cancelAnimationFrame(frame); window.removeEventListener('scroll', queue); window.removeEventListener('resize', queue); media.removeEventListener('change', queue);};
+  }, [motion]);
+  if (!story) return null;
+  return <section ref={runway} className="fo-cinema-runway" aria-label="ஷபா சிறப்புப் பார்வை">
+    <div className="fo-cinema-sticky">
+      <div className="fo-cinema-backdrop" key={`background-${story.id}`} aria-hidden="true"><Photo article={story} priority /></div>
+      <span className="fo-cinema-word" aria-hidden="true" lang="en">SHABA</span>
+      <div className="fo-cinema-grid" aria-hidden="true" />
+      <div className="fo-wrap fo-cinema-stage" onPointerMove={tilt} onPointerLeave={resetTilt}>
+        <div className="fo-cinema-copy"><span className="fo-cinema-eyebrow" lang="en">A DIFFERENT PERSPECTIVE</span><h1><span>செய்திகளுக்கு</span><em>அப்பால்.</em></h1><p>ஒரு நிகழ்வு. பல கோணங்கள்.<br />உங்கள் உலகை நெருக்கமாகப் பாருங்கள்.</p><a className="fo-cinema-discover" href="#fo-journal">செய்திகளை ஆராய்க <ArrowDown size={16} /></a></div>
+        <div className="fo-cinema-orbit" aria-hidden="true"><span /><span /><i /></div>
+        <div className="fo-cinema-frame" key={story.id}>
+          <span className="fo-cinema-frame-edge" aria-hidden="true" />
+          <a href={storyHref(story.id, preview)} className="fo-cinema-photo" data-folio-cursor="read" aria-label={`${story.title} — செய்தியை வாசிக்க`}>
+            <div className="fo-cinema-image" data-fo-photo={story.id}><Photo article={story} priority /></div><span className="fo-cinema-photo-vignette" aria-hidden="true" />
+            <div className="fo-cinema-caption"><span>{story.category} <i />{story.district}</span><h2>{story.title}</h2><span className="fo-cinema-caption-link">செய்தியை வாசிக்க <ArrowUpRight size={18} /></span></div>
+          </a>
+          <span className="fo-cinema-frame-label" aria-hidden="true" lang="en">SHABA / PERSPECTIVES</span>
+        </div>
+        <div className="fo-cinema-bottom"><div className="fo-cinema-selector" aria-label="சிறப்புச் செய்தித் தேர்வு"><span lang="en">{String(active + 1).padStart(2, '0')}<i> / {String(articles.length).padStart(2, '0')}</i></span><button type="button" aria-label="முந்தைய சிறப்புச் செய்தி" onClick={() => setActive((active + articles.length - 1) % articles.length)}><ChevronLeft size={17} /></button><button type="button" aria-label="அடுத்த சிறப்புச் செய்தி" onClick={() => setActive((active + 1) % articles.length)}><ChevronRight size={17} /></button><div className="fo-cinema-selector-dots">{articles.map((item, index) => <button type="button" key={item.id} aria-label={`${index + 1}: ${item.title}`} aria-pressed={active === index} onClick={() => setActive(index)} />)}</div></div><a className="fo-cinema-scroll" href="#fo-journal"><span>தொடர்ந்து பார்க்க</span><span className="fo-cinema-scroll-line" aria-hidden="true" /></a><span className="fo-cinema-edition" lang="en">THE SIGNATURE EDITION<br /><i>NEWS · CULTURE · PERSPECTIVE</i></span></div>
+      </div>
+    </div>
+  </section>;
+}
 function StoryCard({article, preview, feature = false}: {article: Article; preview: string; feature?: boolean}) {
   return <article className={`fo-card${feature ? ' fo-feature-card' : ''}`} onPointerMove={tilt} onPointerLeave={resetTilt}>
     <a href={storyHref(article.id, preview)} className="fo-card-link">
@@ -55,8 +101,9 @@ function StoryCard({article, preview, feature = false}: {article: Article; previ
     </a>
   </article>;
 }
-function SectionHeading({title, count, number}: {title: string; count: number; number: number}) {
-  return <div className="fo-section-heading"><span className="fo-section-number" aria-hidden="true">{String(number).padStart(2, '0')}</span><h2>{title}</h2><span className="fo-section-rule" /><span className="fo-section-count">{count} செய்திகள்</span></div>;
+function SectionHeading({title, count, number, label}: {title: string; count: number; number: number; label?: string}) {
+  const chapters = ['THE FRONT PAGE', 'LOCAL PERSPECTIVES', 'IN FOCUS', 'THE NEXT GENERATION'];
+  return <div className="fo-section-heading"><span className="fo-chapter-label" lang="en">{label || `CHAPTER ${String(number).padStart(2, '0')}`} <i /> {label ? 'THE JOURNAL' : chapters[number - 1] || 'THE JOURNAL'}</span><span className="fo-section-number" aria-hidden="true">{String(number).padStart(2, '0')}</span><h2>{title}</h2><span className="fo-section-rule" /><span className="fo-section-count">{count} செய்திகள்</span></div>;
 }
 function Cover({section, articles, preview, number}: {section: Section; articles: Article[]; preview: string; number: number}) {
   const [index, setIndex] = useState(0);
@@ -82,7 +129,18 @@ function Cover({section, articles, preview, number}: {section: Section; articles
   </section>;
 }
 function Collection({section, articles, preview, number}: {section: Section; articles: Article[]; preview: string; number: number}) {
-  return <section id={`fo-${section.id}`} className={`fo-collection fo-collection-${section.type}`} aria-label={section.title}><SectionHeading title={section.title} count={articles.length} number={number} />{articles.length ? <div className="fo-cards">{articles.map(article => <StoryCard key={article.id} article={article} preview={preview} feature={section.type === 'feature'} />)}</div> : <p className="fo-empty">இந்தப் பகுதியில் செய்திகள் எதுவும் இல்லை.</p>}</section>;
+  const gallery = useRef<HTMLDivElement>(null);
+  function moveGallery(direction: number) {
+    const element = gallery.current;
+    if (!element) return;
+    const reduce = !matchMedia('(prefers-reduced-motion:no-preference)').matches || element.closest('[data-motion="off"]');
+    element.scrollBy({left: element.clientWidth * .85 * direction, behavior: reduce ? 'auto' : 'smooth'});
+  }
+  return <section id={`fo-${section.id}`} className={`fo-collection fo-collection-${section.type}`} aria-label={section.title}>
+    <SectionHeading title={section.title} count={articles.length} number={number} />
+    {section.type === 'list' && articles.length > 1 && <div className="fo-gallery-tools"><span>மேலும் பார்க்க</span><button type="button" aria-label="முந்தைய கல்விச் செய்திகள்" onClick={() => moveGallery(-1)}><ArrowLeft size={16} /></button><button type="button" aria-label="அடுத்த கல்விச் செய்திகள்" onClick={() => moveGallery(1)}><ArrowRight size={16} /></button></div>}
+    {articles.length ? <div ref={gallery} className="fo-cards">{articles.map(article => <StoryCard key={article.id} article={article} preview={preview} feature={section.type === 'feature'} />)}</div> : <p className="fo-empty">இந்தப் பகுதியில் செய்திகள் எதுவும் இல்லை.</p>}
+  </section>;
 }
 
 function Story({article, preview, originalView, saved, onSave}: {article: Article; preview: string; originalView: boolean; saved: boolean; onSave: () => void}) {
@@ -203,6 +261,7 @@ export default function Folio({edition, articles, articleId, originalView = fals
   const sections = edition.sections.filter(section => section.visible).map(section => ({section, items: section.articleIds.map(id => map.get(id)).filter((article): article is Article => Boolean(article))}));
   const editionArticles = [...new Map(sections.flatMap(({items}) => items).map(article => [article.id, article])).values()];
   const latest = [...editionArticles].sort((a, b) => b.date.localeCompare(a.date));
+  const cinemaArticles = [...new Map([...(sections.find(({section}) => section.type === 'feature')?.items || []), ...latest].map(item => [item.id, item])).values()].slice(0, 4);
   const currentHeadline = latest[headline % Math.max(1, latest.length)];
   const districts = ['அனைத்தும்', ...new Set(editionArticles.map(item => item.district).filter(Boolean))];
   const story = articleId ? map.get(articleId) : undefined;
@@ -214,13 +273,14 @@ export default function Folio({edition, articles, articleId, originalView = fals
     opener.current = button; setPanel(next); setQuery(''); dialog.current?.showModal();
     requestAnimationFrame(() => {if (next !== 'menu') firstInput.current?.focus(); else dialog.current?.querySelector<HTMLAnchorElement>('nav a')?.focus();});
   }
-  return <div ref={root} className="fo-root" data-theme={theme} data-motion={motion ? 'on' : 'off'} data-density={edition.density} lang="ta">
+  return <div ref={root} className="fo-root" data-view={articleId ? 'story' : 'home'} data-theme={theme} data-motion={motion ? 'on' : 'off'} data-density={edition.density} lang="ta">
     <a className="fo-skip" href="#fo-main">உள்ளடக்கத்திற்குச் செல்ல</a>
     <div className="fo-utility"><div className="fo-wrap"><span><CalendarDays size={13} />{latest[0] ? formatDate(latest[0].date) : 'ஷபா நியூஸ் தமிழ்'}</span><span><Globe2 size={13} />தமிழ்நாடு <i /> <span lang="en">THE DIGITAL EDITION</span></span></div></div>
     <header className="fo-header"><div className="fo-wrap fo-masthead"><button type="button" className="fo-menu-btn" onClick={event => openPanel('menu', event.currentTarget)} aria-label="பிரிவுகள் மற்றும் மாவட்டங்கள்"><Menu size={19} /><span>பிரிவுகள்</span></button><a href={home} className="fo-home" aria-label="ஷபா நியூஸ் தமிழ் முதற்பக்கம்"><Wordmark /></a><div className="fo-mast-tools"><button type="button" className="fo-theme-button" onClick={changeTheme} aria-label={theme === 'light' ? 'இரவு நிறத்திற்கு மாற்று' : 'பகல் நிறத்திற்கு மாற்று'}>{theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}</button><button type="button" className="fo-saved-btn" onClick={event => openPanel('saved', event.currentTarget)} aria-label="சேமித்த செய்திகள்"><Bookmark size={17} /><span>சேமித்தவை</span>{saved.length > 0 && <small>{saved.length}</small>}</button></div></div></header>
+    {!articleId && cinemaArticles.length > 0 && <CinematicIntro articles={cinemaArticles} preview={preview} motion={motion} />}
     <div className="fo-navigation"><div className="fo-wrap"><nav className="fo-nav" aria-label="செய்திப் பிரிவுகள்"><a href={home} className={!articleId && !activeSection ? 'fo-current' : ''}><House size={15} />முகப்பு</a>{sections.map(({section}) => <a key={section.id} href={`${home}#fo-${section.id}`} className={!articleId && activeSection === `fo-${section.id}` ? 'fo-current' : ''}>{section.title}</a>)}</nav><button type="button" className="fo-motion-button" onClick={changeMotion} aria-pressed={motion} aria-label={motion ? 'அசைவுகளை நிறுத்து' : 'அசைவுகளை இயக்கு'} title={motion ? 'அசைவுகளை நிறுத்து' : 'அசைவுகளை இயக்கு'}>{motion ? <Pause size={14} /> : <Play size={14} />}</button><button type="button" className="fo-search-btn" onClick={event => openPanel('search', event.currentTarget)} aria-label="செய்திகளைத் தேடுக"><Search size={17} /><span>தேடுக</span></button></div>{articleId && <div className="fo-reading-progress" aria-hidden="true" />}</div>
-    <main id="fo-main" className="fo-wrap fo-main" tabIndex={-1}>{articleId ? story ? <><Story article={story} preview={preview} originalView={originalView} saved={saved.includes(story.id)} onSave={() => toggleSaved(story.id)} />{related.length > 0 && <section className="fo-collection fo-related"><SectionHeading title="தொடர்ந்து வாசிக்க" count={related.length} number={1} /><div className="fo-cards">{related.map(item => <StoryCard key={item.id} article={item} preview={preview} />)}</div></section>}</> : <section className="fo-empty"><h1>செய்தி கிடைக்கவில்லை</h1><a href={home}>முகப்பிற்குத் திரும்ப</a></section> : <>
-      <h1 className="fo-sr">ஷபா நியூஸ் தமிழ் — தமிழகத்தின் செய்திகள்</h1>
+    <main id="fo-main" className="fo-wrap fo-main" tabIndex={-1}>{articleId ? story ? <><Story article={story} preview={preview} originalView={originalView} saved={saved.includes(story.id)} onSave={() => toggleSaved(story.id)} />{related.length > 0 && <section className="fo-collection fo-related"><SectionHeading title="தொடர்ந்து வாசிக்க" count={related.length} number={1} label="CONTINUE READING" /><div className="fo-cards">{related.map(item => <StoryCard key={item.id} article={item} preview={preview} />)}</div></section>}</> : <section className="fo-empty"><h1>செய்தி கிடைக்கவில்லை</h1><a href={home}>முகப்பிற்குத் திரும்ப</a></section> : <>
+      <div id="fo-journal" className="fo-journal-intro"><span lang="en">THE JOURNAL</span><h2>உலகம் உங்கள்<br /><em>பார்வையில்.</em></h2><p>மக்கள். மண். மாற்றம்.<br />தமிழகத்தின் கதைகளைத் தொடர்ந்து வாசியுங்கள்.</p><span className="fo-journal-index" lang="en" aria-hidden="true">01—04</span></div>
       {currentHeadline && <div className="fo-headlines"><span className="fo-headline-label"><i />புதியவை</span><a href={storyHref(currentHeadline.id, preview)} key={currentHeadline.id}>{currentHeadline.title}</a><div><button type="button" aria-label="முந்தைய தலைப்பு" onClick={() => setHeadline((headline + latest.length - 1) % latest.length)}><ChevronLeft size={15} /></button><button type="button" aria-label="அடுத்த தலைப்பு" onClick={() => setHeadline((headline + 1) % latest.length)}><ChevronRight size={15} /></button></div></div>}
       <div className="fo-districts"><span><MapPin size={14} />உங்கள் மாவட்டம்</span><div role="group" aria-label="மாவட்டச் செய்திகள்">{districts.map(item => <button type="button" key={item} aria-pressed={district === item} onClick={() => setDistrict(item)}>{item}</button>)}</div><span className="fo-edition-label" lang="en">NEWS. CONTEXT. PERSPECTIVE.</span></div>
       {district !== 'அனைத்தும்' && <div className="fo-filter-notice" role="status">{district} மாவட்டச் செய்திகள் <button type="button" onClick={() => setDistrict('அனைத்தும்')}>அனைத்தையும் காண்க <X size={13} /></button></div>}
@@ -233,6 +293,6 @@ export default function Folio({edition, articles, articleId, originalView = fals
       })}
     </>}</main>
     <footer className="fo-footer" id="fo-content-ready"><div className="fo-wrap"><a href={home}><Wordmark /></a><p>உங்கள் ஊரின் செய்திகள்.<br />உலகத்தைப் பார்க்கும் புதிய பார்வை.</p><a href="#fo-main">மேலே செல்ல <ArrowUpRight size={17} /></a></div><div className="fo-wrap fo-footer-bottom"><span>ஷபா நியூஸ் தமிழ்</span><span lang="en">INDEPENDENT SPIRIT. LOCAL VOICE.</span></div></footer>
-    <dialog ref={dialog} className="fo-dialog" aria-labelledby="fo-dialog-title" onClose={() => opener.current?.focus()} onClick={event => {if (event.target === event.currentTarget) dialog.current?.close();}}><div className="fo-dialog-body"><div className="fo-dialog-head"><h2 id="fo-dialog-title">{panel === 'saved' ? 'சேமித்த செய்திகள்' : panel === 'search' ? 'செய்திகளைத் தேடுக' : 'பிரிவுகள் மற்றும் மாவட்டங்கள்'}</h2><button type="button" aria-label="மூடுக" onClick={() => dialog.current?.close()}><X size={21} /></button></div>{panel !== 'menu' ? <><label className="fo-input"><Search size={19} /><input ref={firstInput} type="search" autoComplete="off" aria-label="தலைப்பு, இடம் அல்லது பிரிவு" placeholder="தலைப்பு, இடம் அல்லது பிரிவு…" value={query} onChange={event => setQuery(event.target.value)} /></label><span className="fo-sr" role="status">{results.length} செய்திகள்</span><div className="fo-results">{results.map(item => <a key={item.id} href={storyHref(item.id, preview)}><span><small>{item.category} · {item.district}</small>{item.title}</span><ArrowUpRight size={17} /></a>)}{!results.length && <p role="status">{panel === 'saved' ? 'நீங்கள் சேமிக்கும் செய்திகள் இங்கே தோன்றும்.' : 'செய்திகள் எதுவும் கிடைக்கவில்லை.'}</p>}</div></> : <><nav className="fo-results" aria-label="செய்திப் பிரிவுகள்"><a href={home} onClick={() => dialog.current?.close()}>முகப்பு <ArrowRight size={16} /></a>{sections.map(({section}) => <a href={`${home}#fo-${section.id}`} key={section.id} onClick={() => dialog.current?.close()}>{section.title}<ArrowRight size={16} /></a>)}</nav><div className="fo-menu-districts"><h3>மாவட்டங்கள்</h3>{districts.slice(1).map(item => <a key={item} href={`${siteBase}/folio${staticSite ? '/' : ''}?district=${encodeURIComponent(item)}${preview ? '&preview=draft' : ''}#fo-main`} onClick={() => dialog.current?.close()}>{item}<ArrowUpRight size={14} /></a>)}</div></>}</div></dialog>
+    <dialog ref={dialog} className="fo-dialog" data-panel={panel} aria-labelledby="fo-dialog-title" onClose={() => opener.current?.focus()} onClick={event => {if (event.target === event.currentTarget) dialog.current?.close();}}><div className="fo-dialog-body"><div className="fo-dialog-head"><h2 id="fo-dialog-title">{panel === 'saved' ? 'சேமித்த செய்திகள்' : panel === 'search' ? 'செய்திகளைத் தேடுக' : 'பிரிவுகள் மற்றும் மாவட்டங்கள்'}</h2><button type="button" aria-label="மூடுக" onClick={() => dialog.current?.close()}><X size={21} /></button></div>{panel !== 'menu' ? <><label className="fo-input"><Search size={19} /><input ref={firstInput} type="search" autoComplete="off" aria-label="தலைப்பு, இடம் அல்லது பிரிவு" placeholder="தலைப்பு, இடம் அல்லது பிரிவு…" value={query} onChange={event => setQuery(event.target.value)} /></label><span className="fo-sr" role="status">{results.length} செய்திகள்</span><div className="fo-results">{results.map(item => <a key={item.id} href={storyHref(item.id, preview)}><span><small>{item.category} · {item.district}</small>{item.title}</span><ArrowUpRight size={17} /></a>)}{!results.length && <p role="status">{panel === 'saved' ? 'நீங்கள் சேமிக்கும் செய்திகள் இங்கே தோன்றும்.' : 'செய்திகள் எதுவும் கிடைக்கவில்லை.'}</p>}</div></> : <><nav className="fo-results" aria-label="செய்திப் பிரிவுகள்"><a href={home} onClick={() => dialog.current?.close()}>முகப்பு <ArrowRight size={16} /></a>{sections.map(({section}) => <a href={`${home}#fo-${section.id}`} key={section.id} onClick={() => dialog.current?.close()}>{section.title}<ArrowRight size={16} /></a>)}</nav><div className="fo-menu-districts"><h3>மாவட்டங்கள்</h3>{districts.slice(1).map(item => <a key={item} href={`${siteBase}/folio${staticSite ? '/' : ''}?district=${encodeURIComponent(item)}${preview ? '&preview=draft' : ''}#fo-main`} onClick={() => dialog.current?.close()}>{item}<ArrowUpRight size={14} /></a>)}</div></>}</div></dialog>
   </div>;
 }

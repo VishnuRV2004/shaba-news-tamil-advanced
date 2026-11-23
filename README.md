@@ -1,6 +1,6 @@
 # Shaba News Tamil
 
-The advanced Shaba News Tamil reader follows the normal edition's red masthead, headline strip, district filters, and four news sections. It adds a layered 3D front-page carousel, card tilt, angled feature images, section reveals, and shared-photo page transitions. Dark mode and a motion toggle are available in the header. Article controls include saved stories, sharing, three text sizes, a reading progress bar, and printing. Preferences are stored on the current device. Open `/folio` or the site root to read.
+The advanced Shaba News Tamil reader keeps the dark red and white brand palette and adds a cinematic opening with scroll-linked photo depth, a full-screen menu, and four animated news chapters. Front-page stories reveal with a photo wipe, district cards enter with alternating 3D angles, the feature section uses a zoom reveal, and education stories enter sideways in a gallery with navigation buttons. District filters, search, dark mode, and a motion toggle remain available. Article controls include saved stories, sharing, three text sizes, reading progress, and printing. Preferences are stored on the current device. Open `/folio` or the site root to read.
 
 [Open the live website](https://shaba-news-tamil-folio.ideastonetech.chatgpt.site/)
 
