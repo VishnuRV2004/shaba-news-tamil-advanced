@@ -1,184 +1,64 @@
 'use client';
 
-import {useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent} from 'react';
-import {ArrowLeft, ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, Feather, MapPin, Menu, Search, X} from 'lucide-react';
+import {useEffect, useRef, useState, useSyncExternalStore, type CSSProperties} from 'react';
+import {ArrowLeft, ArrowRight, ArrowUpRight, Bookmark, Check, ChevronRight, Feather, MapPin, Menu, Search, Share2, X} from 'lucide-react';
 import type {Article, Edition} from '@/lib/model';
 import originals from '@/lib/originals.json';
 import './folio.css';
 
-type Section = Edition['sections'][number];
 type FolioProps = {edition: Edition; articles: Article[]; articleId?: string; originalView?: boolean};
-const dateFormat = new Intl.DateTimeFormat('ta-IN', {day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'});
 const siteBase = process.env.NEXT_PUBLIC_SITE_BASE || '';
 const staticSite = process.env.NEXT_PUBLIC_STATIC_SITE === '1';
+const dateFormat = new Intl.DateTimeFormat('ta-IN', {day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'});
+const dateShort = new Intl.DateTimeFormat('ta-IN', {day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata'});
 
-function formatDate(date: string) {
+function formatDate(date: string, short = false) {
   const value = new Date(date);
-  return Number.isNaN(value.getTime()) ? date : dateFormat.format(value);
+  return Number.isNaN(value.getTime()) ? date : (short ? dateShort : dateFormat).format(value);
 }
-
 function subscribeLocation(notify: () => void) {
   window.addEventListener('popstate', notify);
   return () => window.removeEventListener('popstate', notify);
 }
-
 function storyHref(id: string, preview: string) {
   return `${siteBase}/folio/story/${encodeURIComponent(id)}${staticSite ? '/' : ''}${preview}`;
 }
-
 function Wordmark() {
-  return <span className="fo-wordmark"><span className="fo-seal" aria-hidden="true"><Feather size={24} strokeWidth={1.25} /></span><span className="fo-brand-type"><b>ஷபா நியூஸ்</b><small lang="en">SHABA NEWS TAMIL</small></span></span>;
+  return <span className="fo-wordmark"><span className="fo-seal" aria-hidden="true"><Feather size={23} strokeWidth={1.5} /></span><span className="fo-brand-type"><b>ஷபா நியூஸ்</b><small lang="en">SHABA NEWS TAMIL</small></span></span>;
 }
-
 function Photo({article, priority = false}: {article: Article; priority?: boolean}) {
   const [failed, setFailed] = useState('');
   return article.image && failed !== article.image
-    // eslint-disable-next-line @next/next/no-img-element -- The editor accepts local WebP assets and arbitrary publisher image URLs.
+    // eslint-disable-next-line @next/next/no-img-element -- The editor accepts local WebP assets and publisher image URLs.
     ? <img src={article.image.startsWith('/') ? siteBase + article.image : article.image} alt="" loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} onError={() => setFailed(article.image)} />
-    : <span className="fo-photo-fallback" aria-hidden="true"><Feather size={48} strokeWidth={0.8} /></span>;
+    : <span className="fo-photo-fallback" aria-hidden="true"><Feather size={44} strokeWidth={1} /></span>;
 }
-
-function Info({article}: {article: Article}) {
-  return <span className="fo-info">{article.category && <span>{article.category}</span>}{article.district && <span><MapPin size={12} aria-hidden="true" />{article.district}</span>}</span>;
+function StoryCard({article, preview, variant = 'grid', priority = false}: {article: Article; preview: string; variant?: 'hero' | 'grid' | 'row' | 'compact'; priority?: boolean}) {
+  return <article className={`fo-card fo-card-${variant}`}><a className="fo-card-link" href={storyHref(article.id, preview)}>
+    <div className="fo-card-picture" data-folio-cursor="read" data-fo-photo={article.id}><Photo article={article} priority={priority} /></div>
+    <div className="fo-card-text"><span className="fo-kicker">{article.category}<i />{article.district}</span><h3>{article.title}</h3>{variant === 'hero' && article.summary && <p>{article.summary}</p>}
+      <span className="fo-card-byline"><time dateTime={article.date}>{formatDate(article.date, true)}</time><ArrowUpRight size={18} aria-hidden="true" /></span></div>
+  </a></article>;
 }
-
-function StoryCard({article, preview, feature = false}: {article: Article; preview: string; feature?: boolean}) {
-  return <article className={`fo-card${feature ? ' fo-feature-card' : ''}`}>
-    <a href={storyHref(article.id, preview)} className="fo-card-link">
-      <div className="fo-card-picture" data-folio-cursor="read" data-fo-photo={article.id}><Photo article={article} /></div>
-      <div className="fo-card-text"><Info article={article} /><h3>{article.title}</h3>{feature && article.summary && <p>{article.summary}</p>}
-        <span className="fo-card-byline"><time dateTime={article.date}>{formatDate(article.date)}</time><ArrowUpRight size={19} aria-hidden="true" /></span>
-      </div>
-    </a>
-  </article>;
-}
-
-const turnDuration = 620;
-type Direction = -1 | 1;
-
-function PrintedCover({story, active = false, priority = false}: {story: Article; active?: boolean; priority?: boolean}) {
-  return <div className="fo-print" aria-hidden="true">
-    <div className="fo-print-mast"><span lang="en">Folio</span><small>ஷபா நியூஸ்<br />தமிழ்</small></div>
-    <div className={`fo-print-photo${active ? ' fo-cover-picture' : ''}`} data-fo-photo={active ? story.id : undefined}><Photo article={story} priority={priority} /></div>
-    <div className="fo-print-caption"><small>{story.category}</small><b>{story.title}</b></div>
-    <div className="fo-print-foot"><span lang="en">SHABA NEWS TAMIL</span><span>{formatDate(story.date)}</span></div>
-  </div>;
-}
-
-function Cover({section, articles, preview, first}: {section: Section; articles: Article[]; preview: string; first: boolean}) {
-  const [turn, setTurn] = useState({active: 0, from: null as number | null, destination: 0, direction: 1 as Direction, nextDirection: 1 as Direction});
-  const pointer = useRef<{id: number; x: number; y: number} | null>(null);
-  const suppressLink = useRef(false);
-  const count = articles.length;
-  const active = Math.min(turn.active, count - 1);
-  const story = articles[active];
-  const departing = turn.from === null ? undefined : articles[turn.from];
-  const next = count > 1 ? articles[(active + 1) % count] : undefined;
-
-  function choose(change: {step: Direction} | {index: number}) {
-    if (count < 2) return;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    setTurn(current => {
-      const target = 'step' in change ? (current.destination + change.step + count) % count : change.index;
-      if (current.destination === target) return current;
-      const direction = 'step' in change ? change.step : target > current.destination ? 1 : -1;
-      if (reduced) return {active: target, from: null, destination: target, direction, nextDirection: direction};
-      if (current.from !== null) return {...current, destination: target, nextDirection: direction};
-      return {active: target, from: current.active, destination: target, direction, nextDirection: direction};
-    });
-  }
-
-  useEffect(() => {
-    if (turn.from === null) return;
-    const timer = window.setTimeout(() => {
-      setTurn(current => current.active === current.destination ? {...current, from: null} :
-        {...current, from: current.active, active: current.destination, direction: current.nextDirection});
-    }, turnDuration);
-    return () => window.clearTimeout(timer);
-  }, [turn.from, turn.active]);
-
-  function movePointer(event: PointerEvent<HTMLDivElement>) {
-    const stage = event.currentTarget;
-    const start = pointer.current;
-    if (start && event.pointerId === start.id && Math.abs(event.clientX - start.x) > 12 && Math.abs(event.clientX - start.x) > Math.abs(event.clientY - start.y) * 1.35) stage.setPointerCapture(event.pointerId);
-    if (event.pointerType !== 'mouse' || !window.matchMedia('(hover: hover) and (prefers-reduced-motion: no-preference)').matches) return;
-    const bounds = stage.getBoundingClientRect();
-    stage.style.setProperty('--fo-rx', `${(0.5 - (event.clientY - bounds.top) / bounds.height) * 5}deg`);
-    stage.style.setProperty('--fo-ry', `${((event.clientX - bounds.left) / bounds.width - 0.5) * 9}deg`);
-  }
-
-  function endSwipe(event: PointerEvent<HTMLDivElement>) {
-    const start = pointer.current;
-    pointer.current = null;
-    if (!start || event.pointerId !== start.id) return;
-    const dx = event.clientX - start.x;
-    if (Math.abs(dx) < 38 || Math.abs(dx) < Math.abs(event.clientY - start.y) * 1.35) return;
-    suppressLink.current = true;
-    choose({step: dx < 0 ? 1 : -1});
-  }
-
-  return <section id={`fo-${section.id}`} className="fo-cover-section" aria-label={section.title} style={{'--fo-turn-duration': `${turnDuration}ms`} as CSSProperties} onKeyDown={event => {
-    if (count < 2 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {event.preventDefault(); choose({step: event.key === 'ArrowRight' ? 1 : -1});}
-    else if (event.key === 'Home' || event.key === 'End') {event.preventDefault(); choose({index: event.key === 'Home' ? 0 : count - 1});}
-  }}>
-    <div className="fo-cover-frame"><article className="fo-cover">
-      <div className="fo-cover-content">
-        <div className="fo-cover-label"><span aria-hidden="true" />{section.title}</div>
-        <div className="fo-cover-copy" key={story.id}><Info article={story} />
-          <h2><a href={storyHref(story.id, preview)}>{story.title}</a></h2>
-          {story.summary && <p>{story.summary}</p>}
-          <a className="fo-read" href={storyHref(story.id, preview)}>செய்தியை வாசிக்க <ArrowUpRight size={17} aria-hidden="true" /></a>
-        </div>
-        {next && <div className="fo-pager" aria-label="அட்டைப்படச் செய்திகள்"><button type="button" aria-label="முந்தைய அட்டைப்படச் செய்தி" onClick={() => choose({step: -1})}><ChevronLeft size={16} aria-hidden="true" />முந்தைய</button>
-          <output aria-live="polite" aria-atomic="true">{String(active + 1).padStart(2, '0')} <i>/</i> {String(count).padStart(2, '0')}</output>
-          <button type="button" aria-label="அடுத்த அட்டைப்படச் செய்தி" onClick={() => choose({step: 1})}>அடுத்த <ChevronRight size={16} aria-hidden="true" /></button></div>}
-      </div>
-      <div className="fo-bookstage" tabIndex={next ? 0 : undefined} role="group" aria-label={next ? 'அட்டைப்படங்கள். இடது அல்லது வலது அம்புக்குறியால் புரட்டவும்.' : section.title}
-        onPointerDown={event => {if (event.isPrimary && event.button === 0) {suppressLink.current = false; pointer.current = {id: event.pointerId, x: event.clientX, y: event.clientY};}}}
-        onPointerMove={movePointer} onPointerUp={endSwipe} onPointerCancel={() => {pointer.current = null;}}
-        onPointerLeave={event => {event.currentTarget.style.removeProperty('--fo-rx'); event.currentTarget.style.removeProperty('--fo-ry');}}
-        onDragStart={event => event.preventDefault()} onClickCapture={event => {if (suppressLink.current && event.detail > 0) {event.preventDefault(); event.stopPropagation();}}}>
-        <div className="fo-desk-shadow" aria-hidden="true" />
-        <div className="fo-book-front">
-          <span className="fo-page-edge fo-edge-right" aria-hidden="true" /><span className="fo-page-edge fo-edge-bottom" aria-hidden="true" />
-          <a className="fo-magazine-link" data-folio-cursor="read" href={storyHref(story.id, preview)} aria-label={`${story.title} — செய்தியை வாசிக்க`} draggable={false}>
-            <PrintedCover story={story} active priority={first} />
-          </a>
-          {departing && <div key={`${departing.id}-${story.id}`} className="fo-turn-leaf" data-direction={turn.direction > 0 ? 'next' : 'previous'} aria-hidden="true">
-            <div className="fo-leaf-face"><PrintedCover story={departing} /></div>
-            <div className="fo-leaf-reverse"><PrintedCover story={story} /></div>
-          </div>}
-        </div>
-        {next && <div className="fo-book-back" aria-hidden="true"><PrintedCover story={next} /></div>}
-      </div>
-    </article></div>
-    {next && <div className="fo-cover-index" aria-label="அட்டைப்படத் தேர்வு">{articles.map((item, i) => <button key={item.id} aria-pressed={active === i} onClick={() => choose({index: i})}>
-      <span className="fo-index-img" data-fo-photo={item.id}><Photo article={item} /></span><span className="fo-index-text"><small>{item.category}</small><b>{item.title}</b></span>
-    </button>)}</div>}
-  </section>;
-}
-
-function Collection({section, articles, preview}: {section: Section; articles: Article[]; preview: string}) {
-  return <section id={`fo-${section.id}`} className={`fo-collection fo-collection-${section.type}`}>
-    <div className="fo-section-heading"><h2>{section.title}</h2><span aria-hidden="true" /><Feather size={22} strokeWidth={1} aria-hidden="true" /></div>
-    {articles.length ? <div className="fo-cards">{articles.map(article => <StoryCard key={article.id} article={article} preview={preview} feature={section.type === 'feature'} />)}</div> : <p className="fo-empty">இந்தப் பகுதியில் செய்திகள் எதுவும் இல்லை.</p>}
-  </section>;
-}
-
-function Story({article, preview, originalView}: {article: Article; preview: string; originalView: boolean}) {
+function Story({article, preview, originalView, saved, onSave}: {article: Article; preview: string; originalView: boolean; saved: boolean; onSave: () => void}) {
+  const [shared, setShared] = useState(false);
   const original = originals[article.id as keyof typeof originals];
-  const sourceHref = original?.sourceUrl === article.sourceUrl
-    ? `${storyHref(article.id, '')}${staticSite ? 'original/' : '/original'}${preview}`
-    : article.sourceUrl;
+  const sourceHref = original?.sourceUrl === article.sourceUrl ? `${storyHref(article.id, '')}${staticSite ? 'original/' : '/original'}${preview}` : article.sourceUrl;
   const localSource = sourceHref.startsWith('/');
-  return <article className="fo-story"><a className="fo-back" href={originalView ? storyHref(article.id, preview) : `${siteBase}/folio${staticSite ? '/' : ''}${preview}`}><ArrowLeft size={16} /> {originalView ? 'செய்திச் சுருக்கத்திற்குத் திரும்ப' : 'முதற்பக்கத்திற்குத் திரும்ப'}</a>
-    <div className="fo-story-intro"><Info article={article} /><h1>{article.title}</h1>{article.summary && <p>{article.summary}</p>}
-      <div className="fo-story-meta">{article.author && <span>{article.author}</span>}<time dateTime={article.date}>{formatDate(article.date)}</time></div>
+  async function share() {
+    try {
+      if (navigator.share) await navigator.share({title: article.title, url: location.href});
+      else {await navigator.clipboard.writeText(location.href); setShared(true); window.setTimeout(() => setShared(false), 2500);}
+    } catch { /* Dismissing the native share sheet needs no error message. */ }
+  }
+  return <article className="fo-story"><a className="fo-back" href={originalView ? storyHref(article.id, preview) : `${siteBase}/folio${staticSite ? '/' : ''}${preview}`}><ArrowLeft size={16} />{originalView ? 'சுருக்கத்திற்குத் திரும்ப' : 'முகப்பிற்குத் திரும்ப'}</a>
+    <div className="fo-story-intro"><div className="fo-kicker">{article.category}<i />{article.district}</div><h1>{article.title}</h1>{article.summary && <p>{article.summary}</p>}
+      <div className="fo-story-meta"><span>{article.author || 'ஷபா செய்திப் பிரிவு'}</span><time dateTime={article.date}>{formatDate(article.date)}</time></div>
+      <div className="fo-story-actions"><button type="button" onClick={onSave} aria-pressed={saved}><Bookmark size={17} fill={saved ? 'currentColor' : 'none'} />{saved ? 'சேமிக்கப்பட்டது' : 'சேமிக்க'}</button><button type="button" onClick={share}>{shared ? <Check size={17} /> : <Share2 size={17} />}{shared ? 'இணைப்பு நகலெடுக்கப்பட்டது' : 'பகிர்'}</button></div>
     </div>
-    {article.image && <figure className="fo-story-photo" data-fo-photo={article.id}><Photo article={article} priority /></figure>}
-    <div className="fo-story-body">{article.body.split(/\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
-      {!originalView && /^(https?:\/\/|\/)/i.test(sourceHref) && <a className="fo-source" href={sourceHref} target={localSource ? undefined : '_blank'} rel={localSource ? undefined : 'noreferrer'}>மூலச் செய்தி <ArrowUpRight size={16} /></a>}
+    {article.image && <figure className="fo-story-photo" data-fo-photo={article.id}><Photo article={article} priority /><figcaption>ஷபா நியூஸ் தமிழ்</figcaption></figure>}
+    <div className="fo-story-body">{article.body.split(/\n+/).filter(Boolean).map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+      {!originalView && /^(https?:\/\/|\/)/i.test(sourceHref) && <a className="fo-source" href={sourceHref} target={localSource ? undefined : '_blank'} rel={localSource ? undefined : 'noreferrer'}>மூலச் செய்தி <ArrowUpRight size={17} /></a>}
     </div>
   </article>;
 }
@@ -189,52 +69,50 @@ export default function Folio({edition, articles, articleId, originalView = fals
   const opener = useRef<HTMLButtonElement | null>(null);
   const [panel, setPanel] = useState<'search' | 'menu'>('search');
   const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('அனைத்தும்');
+  const [district, setDistrict] = useState('அனைத்து மாவட்டங்கள்');
+  const [showSaved, setShowSaved] = useState(false);
+  const [saved, setSaved] = useState<string[]>([]);
   const preview = useSyncExternalStore(subscribeLocation, () => new URLSearchParams(window.location.search).get('preview') === 'draft' ? '?preview=draft' : '', () => '');
+  useEffect(() => {try {setSaved(JSON.parse(localStorage.getItem('shaba-saved-stories') || '[]'));} catch { /* Storage is optional. */ }}, []);
+  useEffect(() => {const params = new URLSearchParams(window.location.search); setCategory(params.get('category') || 'அனைத்தும்'); setShowSaved(params.get('saved') === '1');}, []);
   const map = new Map(articles.map(article => [article.id, article]));
   const sections = edition.sections.filter(section => section.visible).map(section => ({section, items: section.articleIds.map(id => map.get(id)).filter((article): article is Article => Boolean(article))}));
   const editionArticles = [...new Map(sections.flatMap(({items}) => items).map(article => [article.id, article])).values()];
+  const latest = [...editionArticles].sort((a, b) => b.date.localeCompare(a.date));
+  const lead = sections.find(({section}) => section.type === 'lead')?.items || latest;
+  const hero = lead[0] || latest[0];
+  const categories = ['அனைத்தும்', ...new Set(editionArticles.map(article => article.category))];
+  const districts = ['அனைத்து மாவட்டங்கள்', ...new Set(editionArticles.map(article => article.district).filter(Boolean))];
+  const filtered = latest.filter(article => (category === 'அனைத்தும்' || article.category === category) && (district === 'அனைத்து மாவட்டங்கள்' || article.district === district) && (!showSaved || saved.includes(article.id)));
   const story = articleId ? map.get(articleId) : undefined;
-  const related = story ? editionArticles.filter(item => item.id !== story.id)
-    .sort((a, b) => Number(b.category === story.category) - Number(a.category === story.category) || Number(b.district === story.district) - Number(a.district === story.district)).slice(0, 3) : [];
-  const issueDate = editionArticles.map(article => article.date).filter(Boolean).sort().at(-1);
+  const related = story ? latest.filter(item => item.id !== story.id).sort((a, b) => Number(b.category === story.category) - Number(a.category === story.category)).slice(0, 3) : [];
   const search = query.trim().toLocaleLowerCase('ta-IN');
-  const results = editionArticles.filter(article => [article.title, article.summary, article.district, article.category, article.author].some(field => field.toLocaleLowerCase('ta-IN').includes(search)));
+  const results = latest.filter(article => [article.title, article.summary, article.district, article.category, article.author].some(field => field.toLocaleLowerCase('ta-IN').includes(search)));
   const home = `${siteBase}/folio${staticSite ? '/' : ''}${preview}`;
+  const browseHref = (key: 'category' | 'saved', value: string) => `${siteBase}/folio${staticSite ? '/' : ''}?${key}=${encodeURIComponent(value)}${preview ? '&preview=draft' : ''}#fo-latest`;
   function openPanel(next: typeof panel, button: HTMLButtonElement) {
-    opener.current = button;
-    setPanel(next);
-    setQuery('');
-    dialog.current?.showModal();
-    requestAnimationFrame(() => {
-      if (next === 'search') firstInput.current?.focus();
-      else dialog.current?.querySelector<HTMLAnchorElement>('nav a')?.focus();
+    opener.current = button; setPanel(next); setQuery(''); dialog.current?.showModal();
+    requestAnimationFrame(() => {if (next === 'search') firstInput.current?.focus(); else dialog.current?.querySelector<HTMLAnchorElement>('nav a')?.focus();});
+  }
+  function toggleSaved(id: string) {
+    setSaved(current => {
+      const next = current.includes(id) ? current.filter(item => item !== id) : [...current, id];
+      try {localStorage.setItem('shaba-saved-stories', JSON.stringify(next));} catch { /* Storage is optional. */ }
+      return next;
     });
   }
   return <div className="fo-root" data-density={edition.density} style={{'--fo-accent': edition.accent} as CSSProperties} lang="ta">
     <a className="fo-skip" href="#fo-main">உள்ளடக்கத்திற்குச் செல்ல</a>
-    <header className="fo-header"><div className="fo-wrap fo-header-inner">
-      <a className="fo-home" href={home} aria-label="ஷபா நியூஸ் தமிழ் முதற்பக்கம்"><Wordmark /></a>
-      <nav className="fo-nav" aria-label="பிரிவுகள்"><a className={!articleId ? 'fo-current' : ''} href={home} aria-current={!articleId ? 'page' : undefined}>முகப்பு</a>{sections.slice(0, 3).map(({section}) => <a href={`${home}#fo-${section.id}`} key={section.id}>{section.title}</a>)}</nav>
-      <div className="fo-tools"><button type="button" className="fo-search-btn" aria-label="செய்திகளைத் தேடுக" onClick={e => openPanel('search', e.currentTarget)}><Search size={18} /><span>தேடுக</span></button><button type="button" className="fo-menu-btn" aria-label="அனைத்துப் பிரிவுகளும்" onClick={e => openPanel('menu', e.currentTarget)}><Menu size={21} /></button></div>
-    </div></header>
-    <main id="fo-main" className="fo-wrap fo-main" tabIndex={-1}>
-      {articleId ? story ? <><Story article={story} preview={preview} originalView={originalView} />
-        {related.length > 0 && <section className="fo-collection fo-related" aria-labelledby="fo-related-heading">
-          <div className="fo-section-heading"><h2 id="fo-related-heading">தொடர்புடைய செய்திகள்</h2><span aria-hidden="true" /></div>
-          <div className="fo-cards">{related.map(item => <StoryCard key={item.id} article={item} preview={preview} />)}</div>
-        </section>}</> : <section className="fo-empty"><h1>செய்தி கிடைக்கவில்லை</h1><a href={home}>முதற்பக்கத்திற்குத் திரும்ப</a></section> : <>
-        <div className="fo-issue"><h1><span className="fo-edition-tag" lang="en">Folio</span><span className="fo-issue-mark" aria-hidden="true" />{edition.name}</h1>{issueDate && <time dateTime={issueDate}>{formatDate(issueDate)}</time>}</div>
-        {sections.map(({section, items}, i) => section.type === 'lead' && items.length ? <Cover key={section.id} section={section} articles={items} preview={preview} first={i === 0} /> : <Collection key={section.id} section={section} articles={items} preview={preview} />)}
-        {!sections.length && <p className="fo-empty">இந்த இதழில் செய்திகள் எதுவும் இல்லை.</p>}
-      </>}
-    </main>
-    <footer className="fo-footer" id="fo-content-ready"><div className="fo-wrap"><a href={home}><Wordmark /></a><a href="#fo-main">மேலே செல்ல <ArrowRight size={15} /></a></div></footer>
-    <dialog ref={dialog} className="fo-dialog" aria-labelledby="fo-dialog-title" onKeyDown={e => {if (e.key === 'Escape') {e.preventDefault(); dialog.current?.close();}}} onClose={() => opener.current?.focus()} onClick={e => {if (e.target === e.currentTarget) dialog.current?.close();}}>
-      <div className="fo-dialog-body"><div className="fo-dialog-head"><h2 id="fo-dialog-title">{panel === 'search' ? 'செய்திகளைத் தேடுக' : 'அனைத்துப் பிரிவுகளும்'}</h2><button aria-label="மூடுக" onClick={() => dialog.current?.close()}><X size={21} /></button></div>
-        {panel === 'search' ? <><label className="fo-input"><Search size={19} /><input ref={firstInput} type="search" autoComplete="off" aria-label="தலைப்பு, இடம் அல்லது பிரிவு" placeholder="தலைப்பு, இடம் அல்லது பிரிவு…" value={query} onChange={e => setQuery(e.target.value)} /></label>
-          <span className="fo-sr" role="status">{results.length} செய்திகள்</span><div className="fo-results" aria-label="தேடல் முடிவுகள்">{results.map(article => <a key={article.id} href={storyHref(article.id, preview)}><span><small>{article.category}</small>{article.title}</span><ArrowUpRight size={17} /></a>)}{!results.length && <p role="status">செய்திகள் எதுவும் கிடைக்கவில்லை.</p>}</div>
-        </> : <nav className="fo-results" aria-label="இதழின் பிரிவுகள்"><a href={home} onClick={() => dialog.current?.close()}>முகப்பு <ArrowRight size={16} /></a>{sections.map(({section}) => <a href={`${home}#fo-${section.id}`} key={section.id} onClick={() => dialog.current?.close()}>{section.title}<ArrowRight size={16} /></a>)}</nav>}
-      </div>
-    </dialog>
+    <div className="fo-utility"><div className="fo-wrap"><span>தமிழகத்தின் குரல். உங்கள் ஊரின் செய்திகள்.</span><span lang="en">SHABA NEWS TAMIL</span></div></div>
+    <header className="fo-header"><div className="fo-wrap fo-header-inner"><a className="fo-home" href={home} aria-label="ஷபா நியூஸ் தமிழ் முதற்பக்கம்"><Wordmark /></a><span className="fo-header-line">உண்மையை உரக்கச் சொல்வோம்</span><div className="fo-tools"><button type="button" className="fo-search-btn" onClick={event => openPanel('search', event.currentTarget)}><Search size={18} /><span>தேடுக</span></button><button type="button" className="fo-menu-btn" aria-label="பட்டியல்" onClick={event => openPanel('menu', event.currentTarget)}><Menu size={22} /></button></div></div></header>
+    <nav className="fo-nav" aria-label="செய்திப் பிரிவுகள்"><div className="fo-wrap"><a href={home} className={!articleId ? 'fo-current' : ''}>முகப்பு</a><a href={`${home}#fo-latest`}>அண்மைச் செய்திகள்</a>{categories.slice(1, 6).map(item => <a key={item} href={browseHref('category', item)}>{item}</a>)}<a href={browseHref('saved', '1')}>சேமித்தவை</a></div></nav>
+    <main id="fo-main" className="fo-wrap fo-main" tabIndex={-1}>{articleId ? story ? <><Story article={story} preview={preview} originalView={originalView} saved={saved.includes(story.id)} onSave={() => toggleSaved(story.id)} />{related.length > 0 && <section className="fo-related" aria-labelledby="fo-related-title"><div className="fo-section-heading"><h2 id="fo-related-title">தொடர்புடைய செய்திகள்</h2><span /></div><div className="fo-grid">{related.map(item => <StoryCard key={item.id} article={item} preview={preview} />)}</div></section>}</> : <section className="fo-empty"><h1>செய்தி கிடைக்கவில்லை</h1><a href={home}>முகப்பிற்குத் திரும்ப</a></section> : <>
+      <div className="fo-page-date"><span><i />செய்தித் தொகுப்பு</span>{latest[0] && <time dateTime={latest[0].date}>கடைசிப் பதிவு · {formatDate(latest[0].date)}</time>}</div>
+      {hero && <section className="fo-lead" aria-labelledby="fo-lead-heading"><div className="fo-lead-head"><span className="fo-eyebrow">முக்கியச் செய்திகள்</span><h1 id="fo-lead-heading">தமிழகச் செய்திகள்,<br /><em>உங்கள் பார்வையில்.</em></h1><p>உங்கள் ஊரில் நடக்கும் முக்கிய நிகழ்வுகள் — தெளிவாகவும் எளிதாகவும்.</p></div><div className="fo-lead-grid"><StoryCard article={hero} preview={preview} variant="hero" priority /><div className="fo-lead-side">{lead.filter(item => item.id !== hero.id).slice(0, 2).map(item => <StoryCard key={item.id} article={item} preview={preview} variant="compact" />)}<div className="fo-lead-note"><span className="fo-eyebrow">ஷபா நியூஸ்</span><p>ஊரின் கதை<br />உங்களிடம்.</p><a href="#fo-latest">மேலும் வாசிக்க <ArrowRight size={17} /></a></div></div></div></section>}
+      <section id="fo-latest" className="fo-latest" aria-labelledby="fo-latest-title"><div className="fo-section-heading"><div><span className="fo-eyebrow">THE NEWSROOM</span><h2 id="fo-latest-title">{showSaved ? 'சேமித்த செய்திகள்' : 'அண்மைச் செய்திகள்'}</h2></div><span /></div><div className="fo-filter-bar"><div className="fo-category-tabs" aria-label="செய்தி வகை">{categories.map(item => <button type="button" key={item} aria-pressed={category === item} onClick={() => setCategory(item)}>{item}</button>)}</div><div className="fo-filter-tools"><label className="fo-district"><MapPin size={15} /><select aria-label="மாவட்டம்" value={district} onChange={event => setDistrict(event.target.value)}>{districts.map(item => <option key={item}>{item}</option>)}</select></label><button type="button" className="fo-saved-filter" aria-pressed={showSaved} onClick={() => setShowSaved(value => !value)}><Bookmark size={16} fill={showSaved ? 'currentColor' : 'none'} />சேமித்தவை</button></div></div><div className="fo-news-layout"><div className="fo-news-list">{filtered.map(item => <StoryCard key={item.id} article={item} preview={preview} variant="row" />)}{!filtered.length && <p className="fo-empty">இந்தத் தேர்வில் செய்திகள் எதுவும் இல்லை.</p>}</div><aside className="fo-sidebar"><div className="fo-sidebar-title"><span className="fo-eyebrow">LATEST UPDATES</span><h3>புதிய பதிவுகள்</h3></div>{latest.slice(0, 5).map((item, index) => <a key={item.id} href={storyHref(item.id, preview)}><span>{String(index + 1).padStart(2, '0')}</span><b>{item.title}</b><ChevronRight size={16} /></a>)}</aside></div></section>
+    </>}</main>
+    <footer className="fo-footer" id="fo-content-ready"><div className="fo-wrap"><div><a href={home}><Wordmark /></a><p>உங்கள் ஊரின் செய்திகள், உங்கள் மொழியில்.</p></div><a href="#fo-main">மேலே செல்ல <ArrowRight size={16} /></a></div></footer>
+    <dialog ref={dialog} className="fo-dialog" aria-labelledby="fo-dialog-title" onClose={() => opener.current?.focus()} onClick={event => {if (event.target === event.currentTarget) dialog.current?.close();}}><div className="fo-dialog-body"><div className="fo-dialog-head"><h2 id="fo-dialog-title">{panel === 'search' ? 'செய்திகளைத் தேடுக' : 'செய்திப் பிரிவுகள்'}</h2><button type="button" aria-label="மூடுக" onClick={() => dialog.current?.close()}><X size={21} /></button></div>{panel === 'search' ? <><label className="fo-input"><Search size={19} /><input ref={firstInput} type="search" autoComplete="off" aria-label="தலைப்பு, இடம் அல்லது பிரிவு" placeholder="தலைப்பு, இடம் அல்லது பிரிவு…" value={query} onChange={event => setQuery(event.target.value)} /></label><span className="fo-sr" role="status">{results.length} செய்திகள்</span><div className="fo-results">{results.map(item => <a key={item.id} href={storyHref(item.id, preview)}><span><small>{item.category} · {item.district}</small>{item.title}</span><ArrowUpRight size={17} /></a>)}{!results.length && <p>செய்திகள் எதுவும் கிடைக்கவில்லை.</p>}</div></> : <nav className="fo-results" aria-label="செய்திப் பிரிவுகள்"><a href={home} onClick={() => dialog.current?.close()}>முகப்பு <ArrowRight size={16} /></a>{categories.slice(1).map(item => <a key={item} href={browseHref('category', item)}>{item}<ArrowRight size={16} /></a>)}</nav>}</div></dialog>
   </div>;
 }

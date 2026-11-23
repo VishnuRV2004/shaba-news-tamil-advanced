@@ -32,7 +32,7 @@ for (const path of [
 const globalCss = await readFile(join(root, 'app/globals.css'), 'utf8');
 await write('app/globals.css', globalCss.replaceAll('url("/fonts/', `url("${base}/fonts/`));
 await write('next.config.ts', `import type {NextConfig} from 'next';\nconst config: NextConfig = {output: 'export', ${base ? `basePath: '${base}', ` : ''}trailingSlash: true};\nexport default config;\n`);
-await write('app/layout.tsx', `import './globals.css';\nexport default function Layout({children}: {children: React.ReactNode}) { return <html lang="ta"><body>{children}</body></html>; }\n`);
+await write('app/layout.tsx', `import './globals.css';\nexport const metadata = {title: 'ஷபா நியூஸ் தமிழ் | உங்கள் ஊரின் செய்திகள்', description: 'தமிழகத்தின் செய்திகள், உங்கள் ஊரின் கதைகள் — ஷபா நியூஸ் தமிழ்.'};\nexport default function Layout({children}: {children: React.ReactNode}) { return <html lang="ta"><body>{children}</body></html>; }\n`);
 await write('components/PublicPage.tsx', `import {notFound} from 'next/navigation';
 import Folio from './Folio';
 import FolioCursor from './FolioCursor';

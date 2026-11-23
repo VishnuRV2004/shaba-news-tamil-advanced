@@ -1,8 +1,8 @@
-# Shaba News Tamil · Folio
+# Shaba News Tamil
 
-Folio is the photographic magazine edition of Shaba News Tamil. It features a three-dimensional cover turn, a photo cursor for mouse readers, and shared-photo transitions when opening a story or returning to the cover. Open `/folio` or the site root to read. Readers can share permanent story links without signing in.
+Shaba News Tamil is a responsive news reader for the publisher's archived stories. It includes category and district filters, search, saved stories on the current device, sharing, and photo transitions between the homepage and article pages. Open `/folio` or the site root to read. The reader does not use 3D effects.
 
-[Open the live Folio](https://shaba-news-tamil-folio.ideastonetech.chatgpt.site/)
+[Open the live website](https://shaba-news-tamil-folio.ideastonetech.chatgpt.site/)
 
 The public edition is a static site built from the archived stories with `npm run build:static` and published at the link above. Visitors do not need a running server. The editorial desk and SQLite publishing workflow below still require the standalone Next.js server; changes made there do not appear on the live static site until rebuilt and republished.
 
@@ -42,4 +42,4 @@ This is a standalone Next.js server. Run one instance with persistent, writable 
 
 The archive reporting, photographs and Shaba brand belong to their original publisher. Each seed article records its original report URL. The Noto Tamil fonts include the SIL Open Font License in `public/fonts/`.
 
-For the archived Shaba stories, **மூலச் செய்தி** opens a full-text Folio view on this site. The source URLs remain in the editorial data for attribution. To refresh the saved article text from the old Shaba pages, run `node scripts/scrape_sources.mjs` and review the updated `lib/originals.json` before publishing. No live scrape runs when a reader opens a story.
+For the archived Shaba stories, **மூலச் செய்தி** opens the full report on this site. The source URLs remain in the editorial data for attribution. To refresh the saved article text from the old Shaba pages, run `node scripts/scrape_sources.mjs` and review the updated `lib/originals.json` before publishing. No live scrape runs when a reader opens a story. The repo does not contain a Junior Vikatan scraper; this redesign uses general news reading patterns from Vikatan's public app descriptions without copying Vikatan reporting, assets, or branding.
